@@ -1,6 +1,6 @@
 allowBuilds:
   '@parcel/watcher': true
-  '@heliannuuthus/ui@https://codeload.github.com/heliannuuthus/ui/tar.gz/56447f8f0aa1f04d4d6f333ed89eaeb5c6b850ee': true
+  '@heliannuuthus/ui@https://codeload.github.com/heliannuuthus/ui/tar.gz/c7a2c5034643273eb51fe64ecdf505cf1f7b9937': true
   esbuild: true
 
 minimumReleaseAgeExclude:
