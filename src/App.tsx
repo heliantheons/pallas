@@ -1,6 +1,8 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { isIrisDomain } from '@/config/env';
 import { AuthProvider } from '@/providers/AuthProvider';
+import { rememberAuthFlow } from '@/utils/error';
 
 // Aegis 域名页面（认证 UI）
 import HomePage from './pages/Home/index.tsx';
@@ -21,6 +23,12 @@ import IrisLinkedAccounts from './pages/Profile/components/IrisLinkedAccounts.ts
 
 /** Aegis 域名路由（认证相关） */
 function AegisRoutes() {
+  const { search } = useLocation();
+
+  useEffect(() => {
+    rememberAuthFlow(search);
+  }, [search]);
+
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />

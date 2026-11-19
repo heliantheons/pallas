@@ -1,29 +1,20 @@
 import { useState, useEffect } from 'react';
-import { Button, Image, Spin, Avatar } from 'antd';
-import { LoadingOutlined, UserOutlined } from '@ant-design/icons';
+import { Button } from '@heliannuuthus/ui/button';
+import { Avatar, AvatarImage, AvatarFallback } from '@heliannuuthus/ui/avatar';
+import { Spinner } from '@heliannuuthus/ui/spinner';
+import { UserRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
-import api from '@/services/api';
-import { showError, isFlowExpiredError, restartAuthFlow } from '@/utils/error';
+import { getConsentInfo, submitConsent } from '@/services/api';
+import {
+  showError,
+  getErrorMessage,
+  isFlowExpiredError,
+  restartAuthFlow,
+} from '@/utils/error';
 import { smartNavigate } from '@/utils/navigation';
-import type { AuthError } from '@/types';
+import type { AuthError, ConsentInfo } from '@/types';
 import styles from './index.module.scss';
-
-interface ConsentInfo {
-  client_name: string;
-  client_logo?: string;
-  scopes: ScopeInfo[];
-  user?: {
-    nickname?: string;
-    avatar?: string;
-  };
-}
-
-interface ScopeInfo {
-  name: string;
-  description: string;
-  required: boolean;
-}
 
 // Scope 图标和描述
 const scopeConfig: Record<
@@ -122,73 +113,44 @@ function ConsentPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [consentInfo, setConsentInfo] = useState<ConsentInfo | null>(null);
-  const [selectedScopes, setSelectedScopes] = useState<string[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   // 获取授权信息
   useEffect(() => {
+    let active = true;
     const fetchConsentInfo = async () => {
       try {
-        const response = await api.get<ConsentInfo>('/consent');
-        setConsentInfo(response.data);
-
-        // 默认选中所有必选的 scope
-        const requiredScopes = response.data.scopes
-          .filter((s) => s.required)
-          .map((s) => s.name);
-        setSelectedScopes(requiredScopes);
+        const info = await getConsentInfo();
+        if (active) setConsentInfo(info);
       } catch (error: unknown) {
+        if (!active) return;
         const err = error as AuthError;
-        if (isFlowExpiredError(err)) {
-          restartAuthFlow();
-          return;
-        }
-        showError(error);
+        if (isFlowExpiredError(err) && restartAuthFlow()) return;
+        setLoadError(getErrorMessage(err));
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
-    fetchConsentInfo();
-  }, []);
+    void fetchConsentInfo();
+    return () => {
+      active = false;
+    };
+  }, [loadAttempt]);
 
-  // 处理授权
-  const handleConsent = async () => {
+  // 批准和拒绝都由后端返回带原始 state 的客户端回调地址。
+  const handleConsent = async (confirm: boolean) => {
+    if (submitting) return;
     setSubmitting(true);
     try {
-      const response = await api.post<{ redirect_uri: string }>('/consent', {
-        scopes: selectedScopes,
-      });
-      // 授权成功后跳转：内部路径用 SPA 路由，外部路径（回调到 atlas）用整页跳转
-      smartNavigate(response.data.redirect_uri, navigate);
+      const action = await submitConsent(confirm);
+      smartNavigate(action.location, navigate);
     } catch (error: unknown) {
+      const err = error as AuthError;
+      if (isFlowExpiredError(err) && restartAuthFlow()) return;
       showError(error);
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  // 拒绝授权
-  const handleDeny = async () => {
-    setSubmitting(true);
-    try {
-      await api.post('/consent/deny');
-      // 拒绝授权后返回登录页
-      navigate('/login', { replace: true });
-    } catch (error) {
-      showError(error);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // 切换 scope 选择
-  const handleScopeToggle = (scope: string) => {
-    const scopeInfo = consentInfo?.scopes.find((s) => s.name === scope);
-    if (scopeInfo?.required) return;
-
-    if (selectedScopes.includes(scope)) {
-      setSelectedScopes(selectedScopes.filter((s) => s !== scope));
-    } else {
-      setSelectedScopes([...selectedScopes, scope]);
     }
   };
 
@@ -198,7 +160,7 @@ function ConsentPage() {
       <div className={styles.container}>
         <div className={styles.card}>
           <div className={styles.loadingState}>
-            <Spin indicator={<LoadingOutlined spin />} size="large" />
+            <Spinner label="正在加载授权信息" />
             <p>正在加载授权信息...</p>
           </div>
         </div>
@@ -207,7 +169,28 @@ function ConsentPage() {
   }
 
   if (!consentInfo) {
-    return null;
+    return (
+      <div className={styles.container}>
+        <div className={styles.card}>
+          <div className={styles.header}>
+            <h1 className={styles.title}>无法加载授权请求</h1>
+            <p className={styles.subtitle} role="alert">
+              {loadError || '请从应用重新发起登录。'}
+            </p>
+          </div>
+          <Button
+            size="lg"
+            onClick={() => {
+              setLoading(true);
+              setLoadError(null);
+              setLoadAttempt((attempt) => attempt + 1);
+            }}
+          >
+            重新加载
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -217,10 +200,9 @@ function ConsentPage() {
         <div className={styles.connectionIndicator}>
           <div className={styles.appIcon}>
             {consentInfo.client_logo ? (
-              <Image
+              <img
                 src={consentInfo.client_logo}
                 alt={consentInfo.client_name}
-                preview={false}
               />
             ) : (
               <span>{consentInfo.client_name.charAt(0)}</span>
@@ -251,12 +233,15 @@ function ConsentPage() {
         {/* 用户信息 */}
         {consentInfo.user && (
           <div className={styles.userCard}>
-            <Avatar
-              size={44}
-              src={consentInfo.user.avatar}
-              icon={<UserOutlined />}
-              className={styles.userAvatar}
-            />
+            <Avatar className={styles.userAvatar}>
+              <AvatarImage
+                src={consentInfo.user.avatar}
+                alt={consentInfo.user.nickname || '用户'}
+              />
+              <AvatarFallback>
+                <UserRound size={20} aria-hidden="true" />
+              </AvatarFallback>
+            </Avatar>
             <div className={styles.userDetails}>
               <span className={styles.userName}>
                 {consentInfo.user.nickname || '用户'}
@@ -288,39 +273,34 @@ function ConsentPage() {
                 ),
                 description: scope.description,
               };
-              const isSelected = selectedScopes.includes(scope.name);
+              // 后端把本次请求的全部 scope 标为必需；批准不缩减权限范围。
 
               return (
                 <button
                   key={scope.name}
                   className={clsx(
                     styles.scopeItem,
-                    isSelected && styles.selected,
-                    scope.required && styles.required
+                    styles.selected,
+                    styles.required
                   )}
-                  onClick={() => handleScopeToggle(scope.name)}
                   style={{ animationDelay: `${index * 0.05}s` }}
-                  disabled={scope.required}
+                  disabled
                 >
                   <div className={styles.scopeIcon}>{config.icon}</div>
                   <div className={styles.scopeContent}>
                     <span className={styles.scopeText}>
                       {config.description}
                     </span>
-                    {scope.required && (
-                      <span className={styles.requiredBadge}>必需</span>
-                    )}
+                    <span className={styles.requiredBadge}>必需</span>
                   </div>
                   <div className={styles.scopeCheck}>
-                    {isSelected && (
-                      <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path
-                          fillRule="evenodd"
-                          d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    )}
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <path
+                        fillRule="evenodd"
+                        d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
                   </div>
                 </button>
               );
@@ -331,19 +311,19 @@ function ConsentPage() {
         {/* 操作按钮 */}
         <div className={styles.actions}>
           <Button
-            size="large"
-            block
-            onClick={handleDeny}
+            size="lg"
+            variant="outline"
+            type="button"
+            onClick={() => handleConsent(false)}
             disabled={submitting}
             className={styles.denyButton}
           >
             拒绝
           </Button>
           <Button
-            type="primary"
-            size="large"
-            block
-            onClick={handleConsent}
+            size="lg"
+            type="button"
+            onClick={() => handleConsent(true)}
             loading={submitting}
             className={styles.allowButton}
           >

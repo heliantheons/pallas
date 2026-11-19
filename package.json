@@ -20,7 +20,7 @@
   "dependencies": {
     "@heliannuuthus/ui": "github:heliannuuthus/ui#c7a2c5034643273eb51fe64ecdf505cf1f7b9937",
     "@ant-design/icons": "^6.1.0",
-    "@heliantheons/aegis-ts": "^1.3.3",
+    "@heliantheons/aegis-ts": "github:heliantheons/aegis-ts#22eac3c57798ef7e5fc854492f518bf756b99d65",
     "@marsidev/react-turnstile": "^1.4.2",
     "ahooks": "^3.9.7",
     "antd": "^6.0.0",

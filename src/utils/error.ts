@@ -111,15 +111,46 @@ export function getPreconditionRequired(
   );
 }
 
+/** 只允许通过当前认证服务的标准授权入口重建流程。 */
+function getLocalAuthorizeUrl(value: string): string | null {
+  try {
+    const url = new URL(value, window.location.origin);
+    if (
+      url.origin !== window.location.origin ||
+      url.pathname !== '/api/authorize'
+    ) {
+      return null;
+    }
+    return `${url.pathname}${url.search}`;
+  } catch {
+    return null;
+  }
+}
+
+/** 保存后端重定向携带的原始授权请求，供后续登录和 MFA 页面恢复流程。 */
+export function rememberAuthFlow(search: string): void {
+  const value = new URLSearchParams(search).get('authorize_url');
+  if (value === null) return;
+
+  const authorizeUrl = getLocalAuthorizeUrl(value);
+  if (authorizeUrl) {
+    sessionStorage.setItem('authorize_url', authorizeUrl);
+  } else {
+    sessionStorage.removeItem('authorize_url');
+  }
+}
+
 /**
  * 重新发起认证流程
  * 从 sessionStorage 读取原始 authorize URL 并跳转，重建 flow
  */
 export function restartAuthFlow(): boolean {
-  const authorizeUrl = sessionStorage.getItem('authorize_url');
+  const storedUrl = sessionStorage.getItem('authorize_url');
+  const authorizeUrl = storedUrl ? getLocalAuthorizeUrl(storedUrl) : null;
   if (authorizeUrl) {
     window.location.href = authorizeUrl;
     return true;
   }
+  sessionStorage.removeItem('authorize_url');
   return false;
 }

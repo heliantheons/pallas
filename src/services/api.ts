@@ -25,6 +25,7 @@ import type {
   Identity,
   IdentifyResponse,
   ConfirmIdentifyRequest,
+  ConsentInfo,
 } from '@/types';
 
 const api = axios.create({
@@ -118,6 +119,23 @@ export function isRedirectAction(data: unknown): data is RedirectAction {
     Array.isArray((data as RedirectAction).actions)
   );
 }
+
+/** 获取当前流程的授权同意信息。 */
+export const getConsentInfo = async (): Promise<ConsentInfo> => {
+  const response = await api.get<ConsentInfo>('/consent');
+  return response.data;
+};
+
+/** 批准或拒绝当前授权请求，返回后端的 300 回调跳转指令。 */
+export const submitConsent = async (
+  confirm: boolean
+): Promise<RedirectAction> => {
+  const response = await api.post<RedirectAction>('/consent', { confirm });
+  if (!isRedirectAction(response.data)) {
+    throw { status: 0 } satisfies AuthError;
+  }
+  return response.data;
+};
 
 /**
  * 发起 Challenge（三层模型：type / channel_type / channel）
