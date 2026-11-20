@@ -357,6 +357,21 @@ export interface MultiAudienceAuthContext extends AuthContextBase {
 /** Flow 信息；具体形态由 service/services 字段决定，不使用模式标记位。 */
 export type AuthContext = SingleAudienceAuthContext | MultiAudienceAuthContext;
 
+/** 当前认证流程请求的授权范围；用户批准全部范围或拒绝本次授权。 */
+export interface ConsentInfo {
+  client_name: string;
+  client_logo?: string;
+  scopes: {
+    name: string;
+    description: string;
+    required: boolean;
+  }[];
+  user?: {
+    nickname?: string;
+    avatar?: string;
+  };
+}
+
 // ==================== 用户个人中心 ====================
 
 /**

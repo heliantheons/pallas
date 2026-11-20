@@ -14,7 +14,7 @@ import {
 import {
   showError,
   isFlowExpiredError,
-  restartAuthFlow,
+  showFlowExpired,
   isRateLimitError,
   getRateLimitData,
 } from '@/utils/error';
@@ -165,7 +165,7 @@ const LoginPage = () => {
         console.error('获取登录信息失败:', error);
         const err = error as AuthError;
         if (isFlowExpiredError(err)) {
-          restartAuthFlow();
+          showFlowExpired();
           return;
         }
         showError(error);
@@ -208,7 +208,7 @@ const LoginPage = () => {
       } catch (error) {
         const err = error as AuthError;
         if (isFlowExpiredError(err)) {
-          restartAuthFlow();
+          showFlowExpired();
         }
       }
     }, KEEPALIVE_INTERVAL);
@@ -268,7 +268,7 @@ const LoginPage = () => {
     } catch (error: unknown) {
       const err = error as AuthError;
       if (isFlowExpiredError(err)) {
-        restartAuthFlow();
+        showFlowExpired();
         return;
       }
       showError(error);

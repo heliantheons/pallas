@@ -111,15 +111,9 @@ export function getPreconditionRequired(
   );
 }
 
-/**
- * 重新发起认证流程
- * 从 sessionStorage 读取原始 authorize URL 并跳转，重建 flow
- */
-export function restartAuthFlow(): boolean {
-  const authorizeUrl = sessionStorage.getItem('authorize_url');
-  if (authorizeUrl) {
-    window.location.href = authorizeUrl;
-    return true;
-  }
-  return false;
+export const FLOW_EXPIRED_EVENT = 'auth-flow-expired';
+
+/** 提示认证流程过期，由用户确认后重新加载当前页面。 */
+export function showFlowExpired(): void {
+  window.dispatchEvent(new Event(FLOW_EXPIRED_EVENT));
 }

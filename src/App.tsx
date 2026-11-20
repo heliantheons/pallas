@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { isIrisDomain } from '@/config/env';
 import { AuthProvider } from '@/providers/AuthProvider';
+import FlowExpiredDialog from '@/components/FlowExpiredDialog';
 
 // Aegis 域名页面（认证 UI）
 import HomePage from './pages/Home/index.tsx';
@@ -22,17 +23,20 @@ import IrisLinkedAccounts from './pages/Profile/components/IrisLinkedAccounts.ts
 /** Aegis 域名路由（认证相关） */
 function AegisRoutes() {
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/authorize" element={<AuthorizePage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/consent" element={<ConsentPage />} />
-      <Route path="/binding" element={<BindingPage />} />
-      <Route path="/terms" element={<TermsPage />} />
-      <Route path="/privacy" element={<PrivacyPage />} />
-      <Route path="/profile" element={<ProfilePage />} />
-      <Route path="*" element={<HomePage />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/authorize" element={<AuthorizePage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/consent" element={<ConsentPage />} />
+        <Route path="/binding" element={<BindingPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="*" element={<HomePage />} />
+      </Routes>
+      <FlowExpiredDialog />
+    </>
   );
 }
 
