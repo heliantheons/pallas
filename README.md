@@ -8,7 +8,11 @@ Pallas 是 Aegis 面向用户的认证界面。登录、OAuth 授权同意、回
 
 Pallas is the human-facing authentication UI for Aegis: login, OAuth consent, callbacks, error presentation, profile, and account security. The auth logic lives in Aegis; Pallas turns those flows into the actual interface.
 
-认证请求由后端 `GET /api/authorize` 发起，再通过浏览器重定向进入现有 `/login`、`/consent` 页面。公开的 `/authorize` 路由继续把完整查询参数转交后端，保留 `nonce`、`state`、PKCE、可选 `audience` 和多 audience 扩展。Pallas 从现有 `GET /api/context` 的成功响应中读取可选的 `authorization_url`，仅保存同源 `/api/authorize` 地址，用于流程过期后的重建；响应未提供地址或地址不安全时清除旧记录，不从页面查询参数读取恢复地址。登录页读取认证上下文，直接进入的授权页并行读取认证上下文和授权信息。如果首次读取上下文时流程已经过期，且没有已保存的授权请求，则显示现有过期或错误提示，无法凭空重建已丢失的服务端流程。授权页面从 `GET /api/consent` 获取本次请求的全部必需权限，通过 `POST /api/consent` 的 `{ confirm: true }` 或 `{ confirm: false }` 批准或拒绝；两者均消费 HTTP 300 的 Location 回调指令。
+认证请求由后端 `GET /api/authorize` 发起，再通过浏览器重定向进入现有 `/login`、`/consent` 页面。公开的 `/authorize` 路由继续把完整查询参数转交后端，保留 `nonce`、`state`、PKCE、可选 `audience` 和多 audience 扩展。
+
+Pallas 从现有 `GET /api/context` 的成功响应读取 `request`，以 JSON 保存到 localStorage 的 `auth_request`；请求缺失时清除旧记录。流程过期后，前端用缓存参数和 URLSearchParams 组装固定的同源 `/api/authorize` 地址。`scope`、`prompt` 已是空格分隔字符串，`audiences` 和其他对象编码为 JSON，保留 `0`、`false`，省略空值。恢复保留参数值，不保留原始百分号编码；重定向校验和授权判断仍由后端执行。缓存缺失或损坏时无法恢复；存储不可用不影响当前认证流程。如果首次读取上下文时流程已过期且没有缓存，则显示现有错误提示。
+
+登录页读取认证上下文，直接进入的授权页并行读取上下文和授权信息。授权页面从 `GET /api/consent` 获取本次请求的全部必需权限，通过 `POST /api/consent` 的 `{ confirm: true }` 或 `{ confirm: false }` 批准或拒绝；两者均消费 HTTP 300 的 Location 回调指令。
 
 开发环境的 Vite `/api` 代理兼容上述浏览器 GET 和内部 XHR 请求。生产容器提供 SPA 静态页面，前置网关必须在 SPA fallback 前把 `/api/`（包括 discovery、authorize、token、JWKS、userinfo 和 consent）路由到 Aegis；`/login` 和 `/consent` 仍由 Pallas 提供。
 

@@ -82,7 +82,7 @@ api.interceptors.response.use(
  */
 export const getAuthContext = async (): Promise<AuthContext> => {
   const response = await api.get<AuthContext>('/context');
-  rememberAuthFlow(response.data.authorization_url);
+  rememberAuthFlow(response.data.request);
   return response.data;
 };
 

@@ -1,5 +1,5 @@
 import { toast } from '@heliannuuthus/ui/toast';
-import type { AuthError } from '@/types';
+import type { AuthError, AuthorizeRequest } from '@/types';
 
 /**
  * HTTP 状态码到用户友好消息的映射
@@ -111,43 +111,55 @@ export function getPreconditionRequired(
   );
 }
 
-/** 只允许通过当前认证服务的标准授权入口重建流程。 */
-function getLocalAuthorizeUrl(value: string): string | null {
+/** 保存认证上下文回显的授权请求，供后续登录和 MFA 页面恢复流程。 */
+export function rememberAuthFlow(request?: AuthorizeRequest): void {
   try {
-    const url = new URL(value, window.location.origin);
-    if (
-      url.origin !== window.location.origin ||
-      url.pathname !== '/api/authorize'
-    ) {
-      return null;
+    if (request) {
+      localStorage.setItem('auth_request', JSON.stringify(request));
+    } else {
+      localStorage.removeItem('auth_request');
     }
-    return `${url.pathname}${url.search}`;
   } catch {
-    return null;
+    // 浏览器禁用存储或配额不足不应中断当前认证流程。
   }
 }
 
-/** 保存认证上下文提供的原始授权请求，供后续登录和 MFA 页面恢复流程。 */
-export function rememberAuthFlow(value?: string): void {
-  const authorizeUrl = value ? getLocalAuthorizeUrl(value) : null;
-  if (authorizeUrl) {
-    sessionStorage.setItem('authorize_url', authorizeUrl);
-  } else {
-    sessionStorage.removeItem('authorize_url');
-  }
-}
-
-/**
- * 重新发起认证流程
- * 从 sessionStorage 读取原始 authorize URL 并跳转，重建 flow
- */
+/** 从缓存的授权请求组装固定的同源入口，重新发起认证流程。 */
 export function restartAuthFlow(): boolean {
-  const storedUrl = sessionStorage.getItem('authorize_url');
-  const authorizeUrl = storedUrl ? getLocalAuthorizeUrl(storedUrl) : null;
-  if (authorizeUrl) {
-    window.location.href = authorizeUrl;
+  try {
+    const storedRequest = localStorage.getItem('auth_request');
+    const parsed: unknown = storedRequest ? JSON.parse(storedRequest) : null;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      rememberAuthFlow();
+      return false;
+    }
+
+    const request = parsed as Record<string, unknown>;
+    if (
+      ['response_type', 'client_id', 'redirect_uri'].some(
+        (key) => typeof request[key] !== 'string' || !request[key]
+      ) ||
+      ['scope', 'prompt'].some(
+        (key) => request[key] != null && typeof request[key] !== 'string'
+      )
+    ) {
+      rememberAuthFlow();
+      return false;
+    }
+
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(request)) {
+      if (value == null) continue;
+      if (typeof value === 'object') {
+        params.set(key, JSON.stringify(value));
+      } else {
+        params.set(key, String(value));
+      }
+    }
+    window.location.href = `/api/authorize?${params.toString()}`;
     return true;
+  } catch {
+    rememberAuthFlow();
+    return false;
   }
-  sessionStorage.removeItem('authorize_url');
-  return false;
 }
