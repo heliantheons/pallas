@@ -27,6 +27,7 @@ import type {
   ConfirmIdentifyRequest,
   ConsentInfo,
 } from '@/types';
+import { rememberAuthFlow } from '@/utils/error';
 
 const api = axios.create({
   baseURL: '/api',
@@ -81,6 +82,7 @@ api.interceptors.response.use(
  */
 export const getAuthContext = async (): Promise<AuthContext> => {
   const response = await api.get<AuthContext>('/context');
+  rememberAuthFlow(response.data.authorization_url);
   return response.data;
 };
 

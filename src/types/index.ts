@@ -336,6 +336,8 @@ export interface ServiceInfo {
  * 单、多 audience 认证上下文共享信息
  */
 export interface AuthContextBase {
+  /** 原始 GET 授权请求地址，仅用于认证流程过期后的重建。 */
+  authorization_url?: string;
   /** 应用信息 */
   application?: ApplicationInfo;
 }

@@ -5,7 +5,7 @@ import { Spinner } from '@heliannuuthus/ui/spinner';
 import { UserRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
-import { getConsentInfo, submitConsent } from '@/services/api';
+import { getAuthContext, getConsentInfo, submitConsent } from '@/services/api';
 import {
   showError,
   getErrorMessage,
@@ -121,7 +121,7 @@ function ConsentPage() {
     let active = true;
     const fetchConsentInfo = async () => {
       try {
-        const info = await getConsentInfo();
+        const [info] = await Promise.all([getConsentInfo(), getAuthContext()]);
         if (active) setConsentInfo(info);
       } catch (error: unknown) {
         if (!active) return;

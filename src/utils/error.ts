@@ -127,12 +127,9 @@ function getLocalAuthorizeUrl(value: string): string | null {
   }
 }
 
-/** 保存后端重定向携带的原始授权请求，供后续登录和 MFA 页面恢复流程。 */
-export function rememberAuthFlow(search: string): void {
-  const value = new URLSearchParams(search).get('authorize_url');
-  if (value === null) return;
-
-  const authorizeUrl = getLocalAuthorizeUrl(value);
+/** 保存认证上下文提供的原始授权请求，供后续登录和 MFA 页面恢复流程。 */
+export function rememberAuthFlow(value?: string): void {
+  const authorizeUrl = value ? getLocalAuthorizeUrl(value) : null;
   if (authorizeUrl) {
     sessionStorage.setItem('authorize_url', authorizeUrl);
   } else {
