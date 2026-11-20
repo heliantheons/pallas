@@ -5,12 +5,12 @@ import { Spinner } from '@heliannuuthus/ui/spinner';
 import { UserRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
-import { getAuthContext, getConsentInfo, submitConsent } from '@/services/api';
+import { getConsentInfo, submitConsent } from '@/services/api';
 import {
   showError,
   getErrorMessage,
   isFlowExpiredError,
-  restartAuthFlow,
+  showFlowExpired,
 } from '@/utils/error';
 import { smartNavigate } from '@/utils/navigation';
 import type { AuthError, ConsentInfo } from '@/types';
@@ -121,12 +121,12 @@ function ConsentPage() {
     let active = true;
     const fetchConsentInfo = async () => {
       try {
-        const [info] = await Promise.all([getConsentInfo(), getAuthContext()]);
+        const info = await getConsentInfo();
         if (active) setConsentInfo(info);
       } catch (error: unknown) {
         if (!active) return;
         const err = error as AuthError;
-        if (isFlowExpiredError(err) && restartAuthFlow()) return;
+        if (isFlowExpiredError(err)) showFlowExpired();
         setLoadError(getErrorMessage(err));
       } finally {
         if (active) setLoading(false);
@@ -147,7 +147,10 @@ function ConsentPage() {
       smartNavigate(action.location, navigate);
     } catch (error: unknown) {
       const err = error as AuthError;
-      if (isFlowExpiredError(err) && restartAuthFlow()) return;
+      if (isFlowExpiredError(err)) {
+        showFlowExpired();
+        return;
+      }
       showError(error);
     } finally {
       setSubmitting(false);

@@ -4,7 +4,7 @@ import { UserOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
 import { getIdentifyContext, confirmIdentify } from '@/services/api';
-import { showError, isFlowExpiredError, restartAuthFlow } from '@/utils/error';
+import { showError, isFlowExpiredError, showFlowExpired } from '@/utils/error';
 import { smartNavigate } from '@/utils/navigation';
 import type { AuthError, IdentifyResponse } from '@/types';
 
@@ -49,7 +49,7 @@ function BindingPage() {
       } catch (error: unknown) {
         const err = error as AuthError;
         if (isFlowExpiredError(err)) {
-          restartAuthFlow();
+          showFlowExpired();
           return;
         }
         showError(error);
@@ -72,7 +72,7 @@ function BindingPage() {
     } catch (error: unknown) {
       const err = error as AuthError;
       if (isFlowExpiredError(err)) {
-        restartAuthFlow();
+        showFlowExpired();
         return;
       }
       showError(error);
@@ -91,7 +91,7 @@ function BindingPage() {
     } catch (error: unknown) {
       const err = error as AuthError;
       if (isFlowExpiredError(err)) {
-        restartAuthFlow();
+        showFlowExpired();
         return;
       }
       showError(error);

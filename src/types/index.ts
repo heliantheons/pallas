@@ -332,30 +332,10 @@ export interface ServiceInfo {
   logo_url?: string;
 }
 
-/** 后端回显的授权请求；扩展参数保留在顶层。 */
-export interface AuthorizeRequest {
-  response_type: string;
-  client_id: string;
-  redirect_uri: string;
-  code_challenge?: string;
-  code_challenge_method?: string;
-  state?: string;
-  scope?: string;
-  prompt?: string;
-  nonce?: string;
-  login_hint?: string;
-  max_age?: number;
-  audience?: string;
-  audiences?: Record<string, { scope: string }>;
-  [parameter: string]: unknown;
-}
-
 /**
  * 单、多 audience 认证上下文共享信息
  */
 export interface AuthContextBase {
-  /** 授权请求参数，用于认证流程过期后的重建。 */
-  request?: AuthorizeRequest;
   /** 应用信息 */
   application?: ApplicationInfo;
 }

@@ -1,5 +1,5 @@
 import { toast } from '@heliannuuthus/ui/toast';
-import type { AuthError, AuthorizeRequest } from '@/types';
+import type { AuthError } from '@/types';
 
 /**
  * HTTP 状态码到用户友好消息的映射
@@ -111,55 +111,9 @@ export function getPreconditionRequired(
   );
 }
 
-/** 保存认证上下文回显的授权请求，供后续登录和 MFA 页面恢复流程。 */
-export function rememberAuthFlow(request?: AuthorizeRequest): void {
-  try {
-    if (request) {
-      localStorage.setItem('auth_request', JSON.stringify(request));
-    } else {
-      localStorage.removeItem('auth_request');
-    }
-  } catch {
-    // 浏览器禁用存储或配额不足不应中断当前认证流程。
-  }
-}
+export const FLOW_EXPIRED_EVENT = 'auth-flow-expired';
 
-/** 从缓存的授权请求组装固定的同源入口，重新发起认证流程。 */
-export function restartAuthFlow(): boolean {
-  try {
-    const storedRequest = localStorage.getItem('auth_request');
-    const parsed: unknown = storedRequest ? JSON.parse(storedRequest) : null;
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      rememberAuthFlow();
-      return false;
-    }
-
-    const request = parsed as Record<string, unknown>;
-    if (
-      ['response_type', 'client_id', 'redirect_uri'].some(
-        (key) => typeof request[key] !== 'string' || !request[key]
-      ) ||
-      ['scope', 'prompt'].some(
-        (key) => request[key] != null && typeof request[key] !== 'string'
-      )
-    ) {
-      rememberAuthFlow();
-      return false;
-    }
-
-    const params = new URLSearchParams();
-    for (const [key, value] of Object.entries(request)) {
-      if (value == null) continue;
-      if (typeof value === 'object') {
-        params.set(key, JSON.stringify(value));
-      } else {
-        params.set(key, String(value));
-      }
-    }
-    window.location.href = `/api/authorize?${params.toString()}`;
-    return true;
-  } catch {
-    rememberAuthFlow();
-    return false;
-  }
+/** 提示认证流程过期，由用户确认后重新加载当前页面。 */
+export function showFlowExpired(): void {
+  window.dispatchEvent(new Event(FLOW_EXPIRED_EVENT));
 }
